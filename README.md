@@ -1,10 +1,10 @@
-# Codex Review -- 7-Lens Code Review Skill for Claude Code
+# Seven-Lens Review -- 7-Lens Code Review Skill for Claude Code
 
 A structured code review methodology that applies 7 overlapping analytical lenses to find bugs that conventional review misses. Built for use as a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) slash command.
 
 ## What It Does
 
-Codex Review performs deep code review through 7 complementary perspectives applied simultaneously:
+Seven-Lens Review performs deep code review through 7 complementary perspectives applied simultaneously:
 
 | # | Lens | What it catches |
 |---|------|-----------------|
@@ -33,11 +33,11 @@ Copy `SKILL.md` to your Claude Code commands directory:
 ```bash
 # As a project command (scoped to one repo)
 mkdir -p .claude/commands
-cp SKILL.md .claude/commands/codex-review.md
+cp SKILL.md .claude/commands/seven-lens-review.md
 
 # As a user command (available in all projects)
 mkdir -p ~/.claude/commands
-cp SKILL.md ~/.claude/commands/codex-review.md
+cp SKILL.md ~/.claude/commands/seven-lens-review.md
 ```
 
 ## Usage
@@ -45,16 +45,16 @@ cp SKILL.md ~/.claude/commands/codex-review.md
 Inside Claude Code, invoke the skill with:
 
 ```
-/codex-review <target>
+/seven-lens-review <target>
 ```
 
 Examples:
 
 ```
-/codex-review the authentication middleware in src/auth/
-/codex-review the payment processing flow
-/codex-review all WebSocket message handlers
-/codex-review src/api/routes.ts — focus on input validation
+/seven-lens-review the authentication middleware in src/auth/
+/seven-lens-review the payment processing flow
+/seven-lens-review all WebSocket message handlers
+/seven-lens-review src/api/routes.ts — focus on input validation
 ```
 
 The skill works best when pointed at:
