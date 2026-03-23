@@ -1,127 +1,87 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Works with Claude Code](https://img.shields.io/badge/Works_with-Claude_Code-blueviolet)](https://docs.anthropic.com/en/docs/claude-code)
-[![GitHub stars](https://img.shields.io/github/stars/jkgdq789-blip/seven-lens-review?style=social)](https://github.com/jkgdq789-blip/seven-lens-review)
 
-# Seven-Lens Review
+# Seven-Lens Review -- Make AI code review actually thorough
 
-7-lens code review skill for Claude Code -- finds bugs that conventional review misses.
+AI reviews tend to check one thing at a time. This skill forces 7 overlapping checks in one pass.
 
-## Quick Start
+## The problem
+
+Claude Code reviews a file and says "looks good." But it only checked one angle -- maybe naming, maybe logic, maybe types. It did not check all of them together. Bugs hide in the gaps between single-pass checks.
+
+Seven-Lens Review is a checklist that catches what single-pass review misses. Not a framework. Not a methodology. A checklist.
+
+## Install in 10 seconds
 
 ```bash
-cp SKILL.md ~/.claude/commands/seven-lens-review.md   # install once
-# then in Claude Code:
-/seven-lens-review src/auth/                           # review any target
+cp SKILL.md ~/.claude/commands/seven-lens-review.md
 ```
 
-## Demo
+Then in Claude Code:
 
 ```
-$ /seven-lens-review src/api/rate-limiter.ts
-
-  Scanning 12 files across 3 directories...
-
-  BEFORE (conventional review): "Looks fine, rate limiter has tests."
-
-  AFTER (seven-lens review):
-
-  +------------------------------------------------------------------+
-  | P1 | Boundary Values  | src/api/rate-limiter.ts:47               |
-  |    | Contract: limit(reqsPerSec) rejects when rate exceeded       |
-  |    | Reality:  parseInt(reqsPerSec) silently returns NaN for      |
-  |    |           non-numeric input -- NaN < maxRate is false,       |
-  |    |           so ALL requests pass through unchecked             |
-  |    | Evidence: limit(req.headers['x-rate']) -- header is a string |
-  +------------------------------------------------------------------+
-  | P2 | State Transition  | src/api/rate-limiter.ts:83              |
-  |    | Contract: window resets every 60s                            |
-  |    | Reality:  clearInterval on config reload never fires because |
-  |    |           timer ref is shadowed by local variable            |
-  +------------------------------------------------------------------+
-  | P3 | Test Gaps         | test/rate-limiter.test.ts                |
-  |    | 14 unit tests for token bucket math, 0 tests for the HTTP   |
-  |    | middleware that actually enforces rate limits on routes       |
-  +------------------------------------------------------------------+
-
-  Summary: 1 P1, 1 P2, 1 P3 across 3 lenses
+/seven-lens-review src/auth/
 ```
 
-## What It Does
+## The 7 lenses
 
-Seven-Lens Review performs deep code review through 7 complementary perspectives applied simultaneously:
+1. **Contract vs. implementation vs. tests** -- Docs promise X, code does Y, test checks Z. All three should agree.
+2. **State transitions** -- Boot, reload, failover, TTL expiry. Does state leak or go stale?
+3. **Boundary values** -- 0, empty string, null, NaN, max int. What happens at the edges?
+4. **Security posture** -- Fail-open auth, replay gaps, HMAC scope, CORS misconfig.
+5. **Cross-component consistency** -- Same feature on two platforms, two different defaults.
+6. **Dead code and false interfaces** -- UI wired to nothing, config stored but never read.
+7. **Test gap analysis** -- Tests that skip silently, assert true, or never test the HTTP layer.
 
-| # | Lens | What it catches |
-|---|------|-----------------|
-| 1 | **Contract-Implementation-Test-Reproduction (CITR)** | Docs promise X, code does Y, test checks Z |
-| 2 | **State Transition** | Boot, reload, failover, TTL expiry -- state that leaks or goes stale |
-| 3 | **Boundary Values** | 0, empty string, null, NaN, unicode, spoofed headers |
-| 4 | **Security Posture** | Fail-open auth, replay gaps, HMAC scope, CORS leaks |
-| 5 | **Cross-Component Consistency** | Same feature, different platforms, different defaults |
-| 6 | **Dead Code / False Interface** | UI wired to nothing, config stored but never read, tests that silently skip |
-| 7 | **Test Gap Analysis** | Tests that import their own copy, assert true, or skip under CI |
+## Example
 
-## Real Bug Found
+```
+/seven-lens-review src/api/rate-limiter.ts
 
-A rate limiter accepted a `reqsPerSec` value from an HTTP header. The code used `parseInt(value)` without a NaN guard, then compared `NaN < maxRate`. Since that comparison is always `false`, the rate limiter silently allowed every request through -- including abuse traffic. Conventional review said "rate limiter has tests and passes." Seven-Lens Review caught it under the Boundary Values lens because it checks every entry point for NaN, 0, and empty-string behavior.
+  Single-pass review said: "Rate limiter has tests and passes."
 
-## How It Was Developed
+  Seven-lens review found:
 
-This skill was refined over **1,300 cycles** of real-world code review on a multi-platform system spanning iOS (Swift), Android (Kotlin), browser PWA (JS), Node.js servers, JVM kiosk apps, LAN relays, and Web3 bridges.
+  P1 | Lens 3 (Boundary) | rate-limiter.ts:47
+      parseInt(reqsPerSec) returns NaN for non-numeric header values.
+      NaN < maxRate is always false. Every request passes through.
 
-### Real Results
+  P2 | Lens 2 (State)    | rate-limiter.ts:83
+      clearInterval on config reload never fires -- timer ref
+      shadowed by a local variable.
 
-- **138 bugs found**, including multiple P1 severity issues
-- Caught bugs that **8 rounds of conventional single-file review missed**
-- Most effective at finding cross-component inconsistencies and integration boundary failures
+  P3 | Lens 7 (Test Gap) | rate-limiter.test.ts
+      14 unit tests for token bucket math.
+      0 tests for the HTTP middleware that enforces limits on routes.
+```
+
+## What it is
+
+A skill file you drop into your Claude Code commands directory. When you invoke it, Claude reviews your target through all 7 lenses in a single pass instead of whatever single angle it would have picked on its own.
+
+Works on any language. Works on any codebase. No dependencies.
 
 ## Installation
 
 ```bash
-# As a project command (scoped to one repo)
+# Scoped to one repo
 mkdir -p .claude/commands
 cp SKILL.md .claude/commands/seven-lens-review.md
 
-# As a user command (available in all projects)
+# Available everywhere
 mkdir -p ~/.claude/commands
 cp SKILL.md ~/.claude/commands/seven-lens-review.md
 ```
 
 ## Usage
 
-Inside Claude Code, invoke the skill with:
-
 ```
-/seven-lens-review <target>
-```
-
-Examples:
-
-```
-/seven-lens-review the authentication middleware in src/auth/
+/seven-lens-review src/auth/
 /seven-lens-review the payment processing flow
 /seven-lens-review all WebSocket message handlers
-/seven-lens-review src/api/routes.ts -- focus on input validation
 ```
 
-The skill works best when pointed at:
-- A component or module directory
-- A feature that spans multiple files
-- A specific concern (e.g., "auth boundary", "state persistence")
-
-## Output
-
-Findings are grouped by severity (P1-P4), each with:
-- Which lens detected it
-- Target file and line
-- What the contract/expectation is
-- What actually happens
-- Specific code evidence
-
-## Compatible With
-
-- **Claude Code** -- install as a slash command
-- **Any language** -- JavaScript, TypeScript, Python, Go, Rust, Swift, Kotlin, Java, and more
-- **Any multi-file codebase** -- monorepos, microservices, multi-platform projects
+Point it at a directory, a feature, or a concern. It works best on anything that spans multiple files.
 
 ## License
 
